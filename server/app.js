@@ -1,10 +1,12 @@
-import experss from "express";
 import { config } from "dotenv";
+import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import fileUpload from "express-fileupload";
 
-const app = experss();
+import { createTables } from "./utils/createTable.js";
+
+const app = express();
 
 config({ path: './config/config.env' }); 
 
@@ -15,12 +17,14 @@ app.use(cors({
 }));
 
 app.use(cookieParser());
-app.use(experss.json());
-app.use(experss.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 app.use(fileUpload({
     tempFileDir: './uploads',
     useTempFiles: true,
 }));
+
+createTables();
 
 export default app;
