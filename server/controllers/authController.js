@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import { v2 as cloudinary } from "cloudinary";
 
 import ErrorHandler from "../middlewares/errorMiddleware.js";
 import { catchAsyncErrors } from "../middlewares/catchAsyncError.js";
@@ -16,6 +17,12 @@ export const register = catchAsyncErrors(async (req, res, next) => {
     // Validate input
     if (!name || !email || !password) {
         return next(new ErrorHandler("Please provide all required fields", 400));
+    }
+
+    // Validate email format    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return next(new ErrorHandler("Please provide a valid email address", 400));
     }
 
     // Validate password length
@@ -239,5 +246,76 @@ export const updatePassword = catchAsyncErrors(async (req, res, next) => {
     res.status(200).json({
         success: true,
         message: "Password updated successfully",
+    });
+});
+
+// Update profile for logged in user
+export const updateProfile = catchAsyncErrors(async (req, res, next) => {
+    const user = req.user;
+    const { name, email } = req.body;
+
+    // Validate input
+    if (!name.trim() || !email.trim()) {
+        return next(new ErrorHandler("Please provide all required fields", 400));
+    }
+
+    // Validate email format    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return next(new ErrorHandler("Please provide a valid email address", 400));
+    }
+
+    // Check if email is already taken by another user
+    const emailCheck = await database.query(
+        "SELECT * FROM users WHERE email = $1 AND id != $2", 
+        [email, user.id]
+    );
+    if (emailCheck.rows.length > 0) {
+        return next(new ErrorHandler("Email is already taken by another user", 400));
+    }
+
+    // Handle avatar upload if provided
+    let avatarData = {};
+    if (req.files && req.files.avatar) {
+        const { avatar } = req.files;
+        
+        // Delete old avatar from Cloudinary if it exists
+        if (req.user?.avatar?.public_id) {
+            await cloudinary.uploader.destroy(req.user.avatar.public_id);
+        }
+
+        // Upload new avatar to Cloudinary
+        const newProfileImage = await cloudinary.uploader.upload(avatar.tempFilePath, {
+            folder: "ecommerce/avatars",
+            width: 150,
+            crop: "scale",
+        });
+
+        // Set new avatar data to be saved in database
+        avatarData = {
+            public_id: newProfileImage.public_id,
+            url: newProfileImage.secure_url,
+        };
+    }
+
+    // Update user in database with new name, email, and avatar (if provided)
+    let updatedUser;
+    if (Object.keys(avatarData).length === 0) {
+        updatedUser = await database.query(
+            "UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING *",
+            [name, email, user.id]
+        );
+    } else {
+        updatedUser = await database.query(
+            "UPDATE users SET name = $1, email = $2, avatar = $3 WHERE id = $4 RETURNING *",
+            [name, email, avatarData, user.id]
+        );
+    }
+
+    // Send response to client with updated user data
+    res.status(200).json({
+        success: true,
+        message: "Profile updated successfully",
+        user: updatedUser.rows[0],
     });
 });
