@@ -37,6 +37,7 @@ export const register = catchAsyncErrors(async (req, res, next) => {
         user: user.rows[0]
     });
 
+    // Send token to client
     sendToken(user.rows[0], 201, "User registered successfully", res);
 
 });
@@ -65,5 +66,17 @@ export const login = catchAsyncErrors(async (req, res, next) => {
         return next(new ErrorHandler("Invalid email or password", 401));
     }
 
+    // Send token to client
     sendToken(user.rows[0], 200, "User logged in successfully", res);
+});
+
+// Get currently logged in user
+export const getUser = catchAsyncErrors(async (req, res, next) => {
+    const user = req.user;
+
+    // Send user data to client
+    res.status(200).json({
+        success: true,
+        user,
+    });
 });
