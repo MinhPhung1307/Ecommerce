@@ -3,6 +3,9 @@ import { catchAsyncErrors } from "../middlewares/catchAsyncError.js";
 import database from "../database/db.js";
 import bcrypt from "bcrypt";
 import { sendToken } from "../utils/jwtToken.js";
+import { generateResetPasswordToken } from "../utils/generateResetPasswordToken.js";
+import { generateForgotPasswordEmailTemplate } from "../utils/generateForgotPasswordEmailTemplate.js";
+import { sendEmail } from '../utils/sendEmail.js';
 
 // Register a new user
 export const register = catchAsyncErrors(async (req, res, next) => {
@@ -91,4 +94,57 @@ export const logout = catchAsyncErrors(async (req, res, next) => {
         success: true,
         message: "User logged out successfully",
     });
+});
+
+export const forgotPassword = catchAsyncErrors(async (req, res, next) => {
+    const { email } = req.body;
+    const { frontendUrl } = req.query;
+
+    // Check if user exists
+    let userResult = await database.query(
+        "SELECT * FROM users WHERE email = $1", 
+        [email]
+    );
+    if (userResult.rows.length === 0) {
+        return next(new ErrorHandler("User not found with this email", 404));
+    }
+
+    // Get the user data
+    const user = userResult.rows[0]; 
+
+    // Generate reset password token and expiration time
+    const { hashedToken, resetPasswordExpireTime, resetToken } = generateResetPasswordToken();
+
+    // Update user with reset token and expiration time
+    await database.query(
+        "UPDATE users SET reset_password_token = $1, reset_password_expire = to_timestamp($2) WHERE email = $3",
+        [hashedToken, resetPasswordExpireTime / 1000, email]
+    );
+
+    // Create reset password URL
+    const resetPasswordUrl = `${frontendUrl}/password/reset/${resetToken}`;
+
+    // Generate email template
+    const message = generateForgotPasswordEmailTemplate(user.name, resetPasswordUrl);
+
+    // Send email and handle potential errors
+    try {
+        // Send email to user with reset password link
+        await sendEmail({
+            email: user.email,
+            subject: "Ecommerce Password Recovery",
+            message,
+        });
+        res.status(200).json({
+            success: true,            
+            message: `Email sent to ${user.email} successfully`,
+        })
+    } catch (error) {
+        // Clear reset token and expiration time from database if email sending fails
+        await database.query(
+            "UPDATE users SET reset_password_token = NULL, reset_password_expire = NULL WHERE email = $1",
+            [email]
+        );
+        return next(new ErrorHandler("Failed to send email. Please try again later.", 500));
+    }
 });

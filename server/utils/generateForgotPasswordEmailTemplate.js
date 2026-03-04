@@ -1,8 +1,8 @@
-export const generateForgotPasswordEmailTemplate = (resetPasswordUrl) => {
+export const generateForgotPasswordEmailTemplate = (userName, resetPasswordUrl) => {
     return `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #000; color: #fff;">
             <h2 style="color: #fff; text-align: center;">Reset Your Password</h2>
-            <p style="font-size: 16px; color: #ccc;">Dear User,</p>
+            <p style="font-size: 16px; color: #ccc;">Dear ${userName},</p>
             <p style="font-size: 16px; color: #ccc;">You requested to reset your password. Please click the button below to proceed:</p>
             <div style="text-align: center; margin: 20px 0;">
                 <a href="${resetPasswordUrl}" 
