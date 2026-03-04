@@ -196,3 +196,48 @@ export const resetPassword = catchAsyncErrors(async (req, res, next) => {
     // Send token to client
     sendToken(updatedUser.rows[0], 200, "Password reset successful", res);
 });
+
+// Update password for logged in user
+export const updatePassword = catchAsyncErrors(async (req, res, next) => {
+    const user = req.user;
+    const { currentPassword, newPassword, confirmNewPassword } = req.body;
+
+    // Validate input
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+        return next(new ErrorHandler("Please provide all required fields", 400));
+    }
+
+    // Validate new password and confirm new password
+    const isPasswordMatched = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordMatched) {
+        return next(new ErrorHandler("Current password is incorrect", 400));
+    }
+    
+    // Validate new password length
+    if (
+        newPassword.length < 6 || 
+        newPassword.length > 20 || 
+        confirmNewPassword.length < 6 || 
+        confirmNewPassword.length > 20
+    ) {
+        return next(new ErrorHandler("Password must be between 6 and 20 characters", 400));
+    }
+
+    // Validate new password and confirm new password match
+    if (newPassword !== confirmNewPassword) {
+        return next(new ErrorHandler("New password and confirm new password do not match", 400));
+    }
+
+    // Hash the new password and update user in database
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await database.query(
+        "UPDATE users SET password = $1 WHERE id = $2 RETURNING *",
+        [hashedPassword, user.id]
+    );
+
+    // Send response to client
+    res.status(200).json({
+        success: true,
+        message: "Password updated successfully",
+    });
+});
