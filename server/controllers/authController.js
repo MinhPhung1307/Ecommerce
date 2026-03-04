@@ -2,8 +2,8 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { v2 as cloudinary } from "cloudinary";
 
-import ErrorHandler from "../middlewares/errorMiddleware.js";
 import { catchAsyncErrors } from "../middlewares/catchAsyncError.js";
+import ErrorHandler from "../middlewares/errorMiddleware.js";
 import database from "../database/db.js";
 import { sendToken } from "../utils/jwtToken.js";
 import { generateResetPasswordToken } from "../utils/generateResetPasswordToken.js";
