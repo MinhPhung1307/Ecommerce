@@ -1,7 +1,9 @@
+import bcrypt from "bcrypt";
+import crypto from "crypto";
+
 import ErrorHandler from "../middlewares/errorMiddleware.js";
 import { catchAsyncErrors } from "../middlewares/catchAsyncError.js";
 import database from "../database/db.js";
-import bcrypt from "bcrypt";
 import { sendToken } from "../utils/jwtToken.js";
 import { generateResetPasswordToken } from "../utils/generateResetPasswordToken.js";
 import { generateForgotPasswordEmailTemplate } from "../utils/generateForgotPasswordEmailTemplate.js";
@@ -14,6 +16,11 @@ export const register = catchAsyncErrors(async (req, res, next) => {
     // Validate input
     if (!name || !email || !password) {
         return next(new ErrorHandler("Please provide all required fields", 400));
+    }
+
+    // Validate password length
+    if (password.length < 6 || password.length > 20) {
+        return next(new ErrorHandler("Password must be between 6 and 20 characters", 400));
     }
 
     // Check if user already exists
@@ -96,6 +103,7 @@ export const logout = catchAsyncErrors(async (req, res, next) => {
     });
 });
 
+// Forgot password - send reset password email to user
 export const forgotPassword = catchAsyncErrors(async (req, res, next) => {
     const { email } = req.body;
     const { frontendUrl } = req.query;
@@ -147,4 +155,44 @@ export const forgotPassword = catchAsyncErrors(async (req, res, next) => {
         );
         return next(new ErrorHandler("Failed to send email. Please try again later.", 500));
     }
+});
+
+// Reset password - update user's password using reset token
+export const resetPassword = catchAsyncErrors(async (req, res, next) => {
+    const { token } = req.params;
+    const resetPasswordToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Find user with matching reset token and valid expiration time
+    const user = await database.query(
+        "SELECT * FROM users WHERE reset_password_token = $1 AND reset_password_expire > NOW()",
+        [resetPasswordToken]
+    );
+    if (user.rows.length === 0) {
+        return next(new ErrorHandler("Invalid or expired password reset token", 400));
+    }
+
+    // Validate new password and confirm password
+    if (req.body.password !== req.body.confirmPassword) {
+        return next(new ErrorHandler("Password and confirm password do not match", 400));
+    }
+
+    // Validate password length
+    if (
+        req.body.password?.length < 6 || 
+        req.body.password?.length > 20 || 
+        req.body.confirmPassword?.length < 6 || 
+        req.body.confirmPassword?.length > 20
+    ) {
+        return next(new ErrorHandler("Password must be between 6 and 20 characters", 400));
+    }
+
+    // Hash the new password and update user in database
+    const hashedPassword = await bcrypt.hash(req.body.password, 10);
+    const updatedUser = await database.query(
+        "UPDATE users SET password = $1, reset_password_token = NULL, reset_password_expire = NULL WHERE id = $2 RETURNING *",
+        [hashedPassword, user.rows[0].id]
+    );
+
+    // Send token to client
+    sendToken(updatedUser.rows[0], 200, "Password reset successful", res);
 });
