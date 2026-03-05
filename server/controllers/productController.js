@@ -229,3 +229,44 @@ export const deleteProduct = catchAsyncErrors(async (req, res, next) => {
         message: "Product deleted successfully"
     });
 });
+
+// Get product details by ID
+export const getProduct = catchAsyncErrors(async (req, res, next) => {
+    const productId = req.params.id;
+
+    // Check if product exists
+    const product = await database.query("SELECT * FROM products WHERE id = $1", [productId]);
+    if (product.rows.length === 0) {
+        return next(new ErrorHandler("Product not found", 404));
+    }
+
+    // Fetch product details with reviews and reviewer information
+    const result = await database.query(
+        `
+            SELECT p.*, 
+            COALESCE(
+            json_agg(
+            json_build_object(
+                'review_id', r.id,
+                'rating', r.rating,
+                'comment', r.comment,
+                'reviewer', json_build_object(
+                    'id', u.id,
+                    'name', u.name,
+                    'avatar', u.avatar
+                )
+            )) FILTER (WHERE r.id IS NOT NULL), '[]') AS reviews
+            FROM products p
+            LEFT JOIN reviews r ON p.id = r.product_id
+            LEFT JOIN users u ON r.user_id = u.id
+            WHERE p.id = $1
+            GROUP BY p.id
+        `, [productId]
+    );
+
+    res.status(200).json({
+        success: true,
+        message: "Product fetched successfully",
+        product: result.rows[0]
+    });
+});
