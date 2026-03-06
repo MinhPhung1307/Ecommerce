@@ -8,6 +8,7 @@ router.post("/admin/create", isAuthenticatedUser, authorizeRoles("Admin"), produ
 router.get("/", productController.getAllProducts);
 router.get("/details/:id", productController.getProduct);
 router.put("/post-new/review/:id", isAuthenticatedUser, productController.postProductReview);
+router.delete("/delete/review/:id", isAuthenticatedUser, productController.deleteProductReview);
 router.put("/admin/update/:id", isAuthenticatedUser, authorizeRoles("Admin"), productController.updateProduct);
 router.delete("/admin/delete/:id", isAuthenticatedUser, authorizeRoles("Admin"), productController.deleteProduct);
 
