@@ -347,3 +347,31 @@ export const postProductReview = catchAsyncErrors(async (req, res, next) => {
         product: updateProductRating.rows[0]
     });
 });
+
+// Delete a review for a product (Only for the user who posted the review)
+export const deleteProductReview = catchAsyncErrors(async (req, res, next) => {
+    const productId = req.params.id;
+    const userId = req.user.id;
+    
+    const review = await database.query(
+        "DELETE FROM reviews WHERE user_id = $1 AND product_id = $2",
+        [userId, productId]
+    );
+    if (review.rows.length === 0) {
+        return next(new ErrorHandler("Review not found", 404));
+    }
+
+    // Update product's average rating
+    const allReviews = await database.query("SELECT AVG(rating) as avg_rating FROM reviews WHERE product_id = $1", [productId]);
+    const newAVGRating = allReviews.rows[0].avg_rating || 0; // If no reviews left, set to 0
+    const updateProductRating = await database.query(
+        "UPDATE products SET ratings = $1 WHERE id = $2",
+        [newAVGRating, productId]
+    );
+    res.status(200).json({
+        success: true,
+        message: "Review deleted successfully",
+        review: review.rows[0],
+        product: updateProductRating.rows[0]
+    });
+});
