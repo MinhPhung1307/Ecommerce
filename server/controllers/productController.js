@@ -270,3 +270,80 @@ export const getProduct = catchAsyncErrors(async (req, res, next) => {
         product: result.rows[0]
     });
 });
+
+// Post a review for a product (Only for users who have purchased the product)
+export const postProductReview = catchAsyncErrors(async (req, res, next) => {
+    const productId = req.params.id;
+    const { rating, comment } = req.body;
+    const userId = req.user.id;
+
+    // Validate input
+    if (!rating || !comment) {
+        return next(new ErrorHandler("Please provide rating and comment", 400));
+    }
+
+    // Query to check if user has purchased the product
+    const purchaseCheckQuery = `
+        SELECT oi.product_id 
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.id 
+        JOIN payments p ON o.id = p.order_id
+        WHERE o.buyer_id = $1 
+        AND oi.product_id = $2 
+        AND p.payment_status = 'Paid'
+        LIMIT 1
+    `;
+
+    // Check if user has purchased the product
+    const { rows } = await database.query(purchaseCheckQuery, [userId, productId]);
+    if (rows.length === 0) {
+        return res.status(403).json({
+            success: false,
+            message: "You can only review products you have purchased"
+        });
+    }
+
+    // Check if product exists
+    const product = await database.query("SELECT * FROM products WHERE id = $1", [productId]);
+    if (product.rows.length === 0) {
+        return next(new ErrorHandler("Product not found", 404));
+    }
+
+    // Check if user has already reviewed the product
+    const isAlreadyReviewed = await database.query(
+        "SELECT * FROM reviews WHERE user_id = $1 AND product_id = $2",
+        [userId, productId]
+    );
+
+    // If review exists, update it. Otherwise, create a new review
+    let review;
+    if (isAlreadyReviewed.rows.length > 0) {
+        // Update existing review
+        review = await database.query(
+            "UPDATE reviews SET rating = $1, comment = $2 WHERE user_id = $3 AND product_id = $4 RETURNING *",
+            [rating, comment, userId, productId]
+        );
+    } else {
+        // Create new review
+        review = await database.query(
+            "INSERT INTO reviews (user_id, product_id, rating, comment) VALUES ($1, $2, $3, $4) RETURNING *",
+            [userId, productId, rating, comment]
+        );
+    }
+
+    // Update product's average rating
+    const allReviews = await database.query("SELECT AVG(rating) as avg_rating FROM reviews WHERE product_id = $1", [productId]);
+    const newAVGRating = allReviews.rows[0].avg_rating;
+    const updateProductRating = await database.query(
+        "UPDATE products SET ratings = $1 WHERE id = $2 RETURNING *",
+        [newAVGRating, productId]
+    );
+
+    // Send response with review and updated product data
+    res.status(200).json({
+        success: true,
+        message: "Review submitted successfully",
+        review: review.rows[0],
+        product: updateProductRating.rows[0]
+    });
+});
