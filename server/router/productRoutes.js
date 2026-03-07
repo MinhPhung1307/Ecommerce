@@ -11,5 +11,6 @@ router.put("/post-new/review/:id", isAuthenticatedUser, productController.postPr
 router.delete("/delete/review/:id", isAuthenticatedUser, productController.deleteProductReview);
 router.put("/admin/update/:id", isAuthenticatedUser, authorizeRoles("Admin"), productController.updateProduct);
 router.delete("/admin/delete/:id", isAuthenticatedUser, authorizeRoles("Admin"), productController.deleteProduct);
+router.post("/ai-search", isAuthenticatedUser, productController.getAIFilteredProducts);
 
 export default router;
