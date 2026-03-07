@@ -3,6 +3,7 @@ import { v2 as cloudinary } from "cloudinary";
 import { catchAsyncErrors } from "../middlewares/catchAsyncError.js";
 import ErrorHandler from "../middlewares/errorMiddleware.js";
 import database from "../database/db.js";
+import { getAIRecommendation } from "../utils/getAIRecommendation.js";
 
 // Create a new product
 export const createProduct = catchAsyncErrors(async (req, res, next) => {
@@ -374,4 +375,185 @@ export const deleteProductReview = catchAsyncErrors(async (req, res, next) => {
         review: review.rows[0],
         product: updateProductRating.rows[0]
     });
+});
+
+// Get AI filtered product recommendations based on user prompt
+export const getAIFilteredProducts = catchAsyncErrors(async (req, res, next) => {
+    const { userPrompt } = req.body;
+
+    // Validate input
+    if (!userPrompt) {
+        return next(new ErrorHandler("Please provide a prompt", 400));
+    }
+
+    // Function to remove stop words and extract meaningful keywords from the prompt
+    const filterKeywords = (query) => {
+        const stopWords = new Set([
+            "the",
+            "they",
+            "them",
+            "then",
+            "I",
+            "we",
+            "you",
+            "he",
+            "she",
+            "it",
+            "is",
+            "a",
+            "an",
+            "of",
+            "and",
+            "or",
+            "to",
+            "for",
+            "from",
+            "on",
+            "who",
+            "whom",
+            "why",
+            "when",
+            "which",
+            "with",
+            "this",
+            "that",
+            "in",
+            "at",
+            "by",
+            "be",
+            "not",
+            "was",
+            "were",
+            "has",
+            "have",
+            "had",
+            "do",
+            "does",
+            "did",
+            "so",
+            "some",
+            "any",
+            "how",
+            "can",
+            "could",
+            "should",
+            "would",
+            "there",
+            "here",
+            "just",
+            "than",
+            "because",
+            "but",
+            "its",
+            "it's",
+            "if",
+            "tôi",
+            "chúng tôi",
+            "chúng ta",
+            "bạn",
+            "các bạn",
+            "anh",
+            "chị",
+            "nó",
+            "họ",
+            "là",
+            "một",
+            "những",
+            "các",
+            "của",
+            "và",
+            "hoặc",
+            "để",
+            "cho",
+            "từ",
+            "trên",
+            "ai",
+            "tại sao",
+            "khi",
+            "cái nào",
+            "với",
+            "này",
+            "kia",
+            "đó",
+            "trong",
+            "tại",
+            "bởi",
+            "không",
+            "đã",
+            "đang",
+            "sẽ",
+            "có",
+            "làm",
+            "vì vậy",
+            "một vài",
+            "bất kỳ",
+            "như thế nào",
+            "có thể",
+            "nên",
+            "ở đó",
+            "ở đây",
+            "chỉ",
+            "hơn",
+            "bởi vì",
+            "nhưng",
+            "nếu",
+            ".",
+            ",",
+            "!",
+            "?",
+            ">",
+            "<",
+            ";",
+            "`",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+        ]);
+
+        return query
+            .toLowerCase()
+            .replace(/[^\w\s]/g, "")
+            .split(/\s+/)
+            .filter((word) => !stopWords.has(word))
+            .map((word) => `%${word}%`);
+    };
+
+    // Extract keywords from user prompt
+    const keyWords = filterKeywords(userPrompt);
+
+    // Query database to find products matching extracted keywords
+    const result = await database.query(`
+        SELECT * FROM products 
+        WHERE name ILIKE ANY($1)
+        OR description ILIKE ANY($1)
+        OR category ILIKE ANY ($1)
+        LIMIT 200;
+    `, [keyWords]);
+    const filteredProducts = result.rows;
+    
+    // If no products found from database search
+    if (filteredProducts.length === 0) {
+        return res.status(200).json({
+            success: true,
+            message: 'No products found matching your prompt.',
+            product: [],
+        })
+    } 
+    
+    // Send filtered products to AI to refine recommendations
+    const { success, products } = await getAIRecommendation(req, res, userPrompt, filteredProducts);
+
+    // Return AI recommended products to client
+    res.status(200).json({
+        success: success,
+        message: 'AI filtered products.',
+        products
+    })
 });
