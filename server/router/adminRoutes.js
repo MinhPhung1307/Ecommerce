@@ -4,6 +4,7 @@ import { isAuthenticatedUser, authorizeRoles  } from "../middlewares/authMiddlew
 
 const router = express.Router();
 
-router.get('/get-all-users', isAuthenticatedUser, authorizeRoles("Admin"), adminController.getAllUsers)
+router.get('/get-all-users', isAuthenticatedUser, authorizeRoles("Admin"), adminController.getAllUsers);
+router.delete('/delete-user/:id', isAuthenticatedUser, authorizeRoles("Admin"), adminController.deleteUser);
 
 export default router;
