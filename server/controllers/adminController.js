@@ -1,8 +1,10 @@
+import { v2 as cloudinary } from "cloudinary";
+
 import { catchAsyncErrors } from "../middlewares/catchAsyncError.js";
 import ErrorHandler from "../middlewares/errorMiddleware.js";
 import database from "../database/db.js";
 
-// Get all users with pagination
+// Get all users with pagination (Admin only)
 export const getAllUsers = catchAsyncErrors(async (req, res, next) => {
     const page = parseInt(req.query.page) || 1;
 
@@ -27,5 +29,30 @@ export const getAllUsers = catchAsyncErrors(async (req, res, next) => {
         totalUsers,
         currentPage: page,
         users: users.rows,
+    });
+});
+
+// Delete a user (Admin only)
+export const deleteUser = catchAsyncErrors(async (req, res, next) => {
+    const userId = req.params.id;
+
+    // Delete user from database and return deleted record
+    const deleteUser = await database.query("DELETE FROM users WHERE id = $1 RETURNING *", [userId]);
+
+    // Check if user exists
+    if (deleteUser.rows.length === 0) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    // If avatar exists on Cloudinary, delete it
+    const avatar = deleteUser.rows[0].avatar;
+    if (avatar?.public_id) {
+        await cloudinary.uploader.destroy(avatar.public_id);
+    }
+
+    // Send success response
+    res.status(200).json({
+        success: true,
+        message: "User deleted successfully!",
     });
 });
