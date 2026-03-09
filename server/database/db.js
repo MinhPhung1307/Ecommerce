@@ -12,8 +12,9 @@ const database = new Pool({
 });
 
 try {
-  await database.connect();
+  const client = await database.connect();
   console.log("Connected to the database successfully");
+  client.release();
 } catch (error) {
   console.error("Database connection failed:", error);
   process.exit(1);
