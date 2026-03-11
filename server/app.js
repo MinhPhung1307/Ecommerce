@@ -9,6 +9,7 @@ import { errorMiddleware } from "./middlewares/errorMiddleware.js";
 import authRoutes from "./router/authRoutes.js";
 import productRoutes from "./router/productRoutes.js";
 import adminRoutes from "./router/adminRoutes.js";
+import paymentRoutes from "./router/paymentRoutes.js";
 
 const app = express();
 
@@ -19,6 +20,8 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
+
+app.use('/api/v1/payment', paymentRoutes);
 
 app.use(cookieParser());
 app.use(express.json());
