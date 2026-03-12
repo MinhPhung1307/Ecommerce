@@ -10,6 +10,7 @@ import authRoutes from "./router/authRoutes.js";
 import productRoutes from "./router/productRoutes.js";
 import adminRoutes from "./router/adminRoutes.js";
 import paymentRoutes from "./router/paymentRoutes.js";
+import orderRoutes from "./router/orderRouters.js";
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use(fileUpload({
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/product', productRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/order', orderRoutes);
 
 createTables();
 
