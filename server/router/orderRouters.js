@@ -9,5 +9,6 @@ router.get("/details/:id", isAuthenticatedUser, orderController.getOrder);
 router.get("/my-order", isAuthenticatedUser, orderController.getMyOrders);
 router.get("/admin/getall", isAuthenticatedUser, authorizeRoles("Admin"), orderController.getAllOrders);
 router.put("/admin/update/:id", isAuthenticatedUser, authorizeRoles("Admin"), orderController.updateOrderStatus);
+router.delete("/admin/delete/:id", isAuthenticatedUser, authorizeRoles("Admin"), orderController.deleteOrder);
 
 export default router;
