@@ -6,5 +6,6 @@ const router = express.Router();
 
 router.post("/new", isAuthenticatedUser, orderController.placeNewOrder);
 router.get("/details/:id", isAuthenticatedUser, orderController.getOrder);
+router.get("/my-order", isAuthenticatedUser, orderController.getMyOrders);
 
 export default router;
