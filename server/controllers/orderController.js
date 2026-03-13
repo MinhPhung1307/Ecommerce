@@ -244,3 +244,18 @@ export const updateOrderStatus = catchAsyncErrors(async (req, res, next) => {
         updatedOrder: updatedOrder.rows[0],
     });
 });
+
+export const deleteOrder = catchAsyncErrors(async (req, res, next) => {
+    const orderId = req.params.id;
+
+    const results = await database.query(`DELETE FROM orders WHERE id = $1 RETURNING *`, [orderId]);
+    if (results.rows.length === 0) {
+        return next(new ErrorHandler("Invalid order ID.", 404));
+    }
+
+    res.status(200).json({
+        success: true,
+        message: "Order deleted.",
+        order: results.rows[0],
+    });
+});
