@@ -52,7 +52,7 @@ const ProfilePanel = () => {
       {/* OVERLAY */}
       <div 
         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40" 
-        onClick={() => dispatch(toggleSidebar())}
+        onClick={() => dispatch(toggleAuthPopup())}
       />
 
       {/* PROFILE PANEL */}
@@ -97,14 +97,14 @@ const ProfilePanel = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full p-2 rounded border border-border bg-secondary text-foreground"
               />
-              <label className="flex items-center gpa-2 cursor-pointer text-sm text-muted-foreground">
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground">
                 <Upload className="w-4 h-4 text-primary"/>
                 <span>Upload Avatar</span>
                 <input 
                   type="file" 
                   accept="image/*" 
                   onChange={(e) => setAvatar(e.target.files[0])}
-                  className="hiden"
+                  className="hidden"
                 />
               </label>
               <button onClick={handleUpdateProfile} className="flex items-center justify-center space-x-3 p-3 rounded-lg glass-card 
