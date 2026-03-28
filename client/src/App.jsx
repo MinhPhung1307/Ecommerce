@@ -1,6 +1,10 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ToastContainer } from "react-toastify";
+import { Loader } from "lucide-react";
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { getUser } from "./store/slices/authSlice";
 
 // Layout Components
 import Navbar from "./components/Layout/Navbar";
@@ -24,6 +28,21 @@ import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
 
 const App = () => {
+  const { authUser, isCheckingAuth } = useSelector(state => state.auth);
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    dispatch(getUser());
+  }, [getUser]);
+
+  if(isCheckingAuth && !authUser) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader className="size-10 animate-spin"/>
+      </div>
+    )
+  }
+
   return (
     <>
       <ThemeProvider>
