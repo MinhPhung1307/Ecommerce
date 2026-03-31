@@ -2,9 +2,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ToastContainer } from "react-toastify";
 import { Loader } from "lucide-react";
-import { useEffect } from "react";
+import { use, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getUser } from "./store/slices/authSlice";
+import { getAllProducts } from "./store/slices/productSlice";
 
 // Layout Components
 import Navbar from "./components/Layout/Navbar";
@@ -35,7 +36,13 @@ const App = () => {
     dispatch(getUser());
   }, [getUser]);
 
-  if(isCheckingAuth && !authUser) {
+  useEffect(() => {
+    dispatch(getAllProducts());
+  }, []);
+
+  const { products } = useSelector(state => state.product);
+
+  if((isCheckingAuth && !authUser) || !products) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader className="size-10 animate-spin"/>
