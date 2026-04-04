@@ -37,7 +37,16 @@ const App = () => {
   }, [getUser]);
 
   useEffect(() => {
-    dispatch(getAllProducts());
+    dispatch(
+      getAllProducts({
+        availability: "", 
+        price: "0-10000", 
+        category: "", 
+        ratings: "", 
+        search: "",
+        page: 1 
+      }
+    ));
   }, []);
 
   const { products } = useSelector(state => state.product);
